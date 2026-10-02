@@ -123,9 +123,28 @@ export class YouTubeProvider implements ISocialProvider {
             avatarUrl: ch.snippet.thumbnails?.default?.url,
             capabilities: { publish: true, analytics: true },
           };
+        } else {
+          // Fallback to Google Profile if no YouTube channel is created yet
+          const userRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+            headers: {
+              Authorization: `Bearer ${tokenData.access_token}`,
+            },
+          });
+          const userData = (await userRes.json()) as any;
+          if (userData && userData.id) {
+            accountInfo = {
+              platformAccountId: `google_${userData.id}`,
+              platform: "YouTube",
+              username: userData.email || userData.name || "Google User",
+              displayName: userData.name || "Google User",
+              avatarUrl: userData.picture,
+              capabilities: { publish: true, analytics: true },
+            };
+          }
         }
-      } catch {
+      } catch (err) {
         // Fallback to basic account info if channel query fails
+        console.warn("[YouTubeProvider] Failed to fetch channel/profile info:", err);
       }
 
       return { tokens, accounts: [accountInfo] };
