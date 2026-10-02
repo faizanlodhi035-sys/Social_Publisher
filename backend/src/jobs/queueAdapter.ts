@@ -1,6 +1,8 @@
 import { envConfig } from "../config/env.js";
 import type { PublishingJob } from "./types.js";
 
+import { processPublishingJob } from "./publisherWorker.js";
+
 export interface PublishingQueue {
   enqueueImmediate(job: PublishingJob): Promise<boolean>;
   scheduleTask(job: PublishingJob, targetTimestampMs: number): Promise<boolean>;
@@ -13,9 +15,6 @@ export class CloudTasksQueueAdapter implements PublishingQueue {
   }
 
   public async scheduleTask(job: PublishingJob, targetTimestampMs: number): Promise<boolean> {
-    const backendUrl = envConfig.BACKEND_URL || "http://localhost:4000";
-    const workerUrl = `${backendUrl}/api/internal/publishing-jobs/${job.id}/process?workspaceId=${job.workspaceId}`;
-
     const delayMs = Math.max(0, targetTimestampMs - Date.now());
 
     // Check if GCP Cloud Tasks credentials exist
@@ -39,24 +38,16 @@ export class CloudTasksQueueAdapter implements PublishingQueue {
     if (delayMs <= 100) {
       // Execute immediately in background
       setTimeout(() => {
-        fetch(workerUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Worker-Token": envConfig.SESSION_SECRET,
-          },
-        }).catch((err) => console.warn(`[LocalQueueRunner] Immediate job invocation warning for ${job.id}:`, err));
+        processPublishingJob(job.id, job.workspaceId).catch((err) => 
+          console.warn(`[LocalQueueRunner] Immediate job invocation warning for ${job.id}:`, err)
+        );
       }, 50);
     } else {
       // Schedule timer for local dev session
       setTimeout(() => {
-        fetch(workerUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Worker-Token": envConfig.SESSION_SECRET,
-          },
-        }).catch((err) => console.warn(`[LocalQueueRunner] Scheduled job invocation warning for ${job.id}:`, err));
+        processPublishingJob(job.id, job.workspaceId).catch((err) => 
+          console.warn(`[LocalQueueRunner] Scheduled job invocation warning for ${job.id}:`, err)
+        );
       }, delayMs);
     }
 
