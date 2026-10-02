@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Production build artifacts
+dist/
+
+# Local Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+
+# Service account credential files
+*service-account*.json
+*service_account*.json
+*credentials*.json
+*secret*.json
+*.pem
+*.key
+
+# Test and run data
+data/
+logs/
+*.log

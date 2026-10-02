@@ -1,0 +1,30 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isWorkspaceMember(workspaceId) {
+      return isAuthenticated() && (
+        workspaceId == ("ws_" + request.auth.uid) ||
+        workspaceId == request.auth.uid ||
+        firestore.exists(/databases/(default)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid))
+      );
+    }
+
+    match /workspaces/{workspaceId}/media/{mediaId}/{filename} {
+      // Public read allows social CDNs, webhooks, and post previews to display uploaded media assets
+      allow read: if true;
+
+      // Writes require authenticated workspace membership and enforce file size / type constraints
+      allow write: if isWorkspaceMember(workspaceId) 
+                   && request.resource.size < 100 * 1024 * 1024 // 100MB max
+                   && (request.resource.contentType.matches('image/.*') || request.resource.contentType.matches('video/.*'));
+
+      // Deletion is strictly restricted to members of the workspace
+      allow delete: if isWorkspaceMember(workspaceId);
+    }
+  }
+}

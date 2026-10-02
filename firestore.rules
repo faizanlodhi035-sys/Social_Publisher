@@ -1,0 +1,140 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isWorkspaceMember(workspaceId) {
+      return isAuthenticated() && (
+        exists(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(request.auth.uid)) ||
+        workspaceId == ("ws_" + request.auth.uid) ||
+        workspaceId == request.auth.uid
+      );
+    }
+
+    function isSaasAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.keys().hasAll(['saasRole']) && request.auth.token.saasRole == 'saas_admin') ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.saasRole == 'saas_admin')
+      );
+    }
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User Profiles - Ordinary users cannot escalate their own saasRole or status
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isSaasAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId && request.resource.data.saasRole == 'user';
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['saasRole', 'status'])) ||
+        isSaasAdmin()
+      );
+    }
+
+    // Subscription Plans (Read by all auth users, modified only by SaaS Admin)
+    match /plans/{planId} {
+      allow read: if isAuthenticated();
+      allow write: if isSaasAdmin();
+    }
+
+    // Coupons (Read by all auth users, modified only by SaaS Admin)
+    match /coupons/{couponId} {
+      allow read: if isAuthenticated();
+      allow write: if isSaasAdmin();
+    }
+
+    // Coupon Redemptions (Read by customer or SaaS Admin, written only by backend)
+    match /couponRedemptions/{redemptionId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isSaasAdmin());
+      allow write: if false;
+    }
+
+    // Benefits (Read by customer or SaaS Admin, modified only by SaaS Admin)
+    match /benefits/{benefitId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isSaasAdmin());
+      allow write: if isSaasAdmin();
+    }
+
+    // Admin Audit Logs (Strictly read by SaaS Admin, written by backend)
+    match /adminAuditLogs/{logId} {
+      allow read: if isSaasAdmin();
+      allow write: if false;
+    }
+
+    // Top-Level Internal Webhook Events (Strictly Backend Admin SDK Only)
+    match /webhookEvents/{eventId} {
+      allow read, write: if false;
+    }
+
+    // Workspace scoping
+    match /workspaces/{workspaceId} {
+      allow read: if isWorkspaceMember(workspaceId);
+      allow create, update: if isAuthenticated();
+
+      // Workspace Members
+      match /members/{userId} {
+        allow read, write: if isWorkspaceMember(workspaceId);
+      }
+
+      // Account Metadata (Tokens NOT stored here)
+      match /accounts/{accountId} {
+        allow read, write: if isWorkspaceMember(workspaceId);
+
+        // OAuth Token Secrets Document - STRICTLY BACKEND ADMIN ONLY
+        match /secrets/{secretDoc} {
+          allow read, write: if false;
+        }
+      }
+
+      // Posts - Sensitive server-managed publish attributes cannot be client-forged
+      match /posts/{postId} {
+        allow read, delete: if isWorkspaceMember(workspaceId);
+        allow create: if isWorkspaceMember(workspaceId);
+        allow update: if isWorkspaceMember(workspaceId)
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['providerPostId', 'publishedAt']));
+      }
+
+      // Publishing Jobs (Server-managed, workspace members read-only)
+      match /publishingJobs/{jobId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow write: if false;
+      }
+
+      // Social Webhook Events (Server-managed, workspace members read-only)
+      match /socialEvents/{eventId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow write: if false;
+      }
+
+      // Engagement Metric Snapshots (Server-managed, workspace members read-only)
+      match /engagementSnapshots/{snapshotId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow write: if false;
+      }
+
+      // AI Usage Audit Records (Server-managed, workspace members read-only)
+      match /aiUsage/{usageId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow write: if false;
+      }
+
+      // Audit Event Logs (Server-managed, workspace members read-only)
+      match /auditEvents/{eventId} {
+        allow read: if isWorkspaceMember(workspaceId);
+        allow write: if false;
+      }
+
+      // Media Asset Metadata
+      match /media/{mediaId} {
+        allow read, create, update, delete: if isWorkspaceMember(workspaceId);
+      }
+    }
+  }
+}
