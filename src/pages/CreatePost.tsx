@@ -80,7 +80,7 @@ const platforms: Platform[] = [
     name: "Facebook",
     username: "RB Creator",
     icon: FaFacebook,
-    connected: true,
+    connected: false,
     captionLimit: 63206,
   },
   {
@@ -88,7 +88,7 @@ const platforms: Platform[] = [
     name: "TikTok",
     username: "@rbcreator",
     icon: FaTiktok,
-    connected: true,
+    connected: false,
     captionLimit: 4000,
   },
   {
@@ -109,7 +109,7 @@ export default function CreatePost() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(
-    platforms.map((platform) => platform.id),
+    platforms.filter((p) => p.connected).map((platform) => platform.id),
   );
   const [caption, setCaption] = useState("");
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -175,7 +175,7 @@ const stateImportedRef = useRef(false);
           setSelectedPlatforms(
             draft.selectedPlatforms?.length
               ? draft.selectedPlatforms
-              : platforms.map((platform) => platform.id),
+              : platforms.filter((p) => p.connected).map((platform) => platform.id),
           );
           setPlatformCaptions(draft.platformCaptions ?? {});
           setScheduleDate(draft.scheduleDate ?? "");
@@ -329,6 +329,12 @@ const stateImportedRef = useRef(false);
   };
 
   const togglePlatform = (platformId: string) => {
+    const platform = platforms.find((p) => p.id === platformId);
+    if (platform && !platform.connected) {
+      showStatus(`Account not connected! Please connect ${platform.name} first in the Accounts page.`, "error");
+      return;
+    }
+
     setSelectedPlatforms((current) => {
       const next = current.includes(platformId)
         ? current.filter((id) => id !== platformId)
@@ -443,7 +449,7 @@ const stateImportedRef = useRef(false);
     setMediaItems([]);
     setActiveMediaIndex(0);
     setCaption("");
-    setSelectedPlatforms(platforms.map((platform) => platform.id));
+    setSelectedPlatforms(platforms.filter((p) => p.connected).map((platform) => platform.id));
     setPlatformCaptions({});
     setScheduleDate("");
     setScheduleTime("");
@@ -488,10 +494,6 @@ const stateImportedRef = useRef(false);
 
   (async () => {
     try {
-      const selectedPlatformDetails = platforms.filter((platform) =>
-        selectedPlatforms.includes(platform.id),
-      );
-
       // Upload any local files first
       const finalMediaUrls: string[] = [];
       for (const item of mediaItems) {
@@ -1120,7 +1122,7 @@ const stateImportedRef = useRef(false);
                           {platform.name}
                         </p>
                         <p className="truncate text-xs text-slate-400">
-                          {platform.username}
+                          {platform.connected ? platform.username : "Not Connected"}
                         </p>
                       </div>
 
