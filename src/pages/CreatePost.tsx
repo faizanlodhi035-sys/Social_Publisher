@@ -24,6 +24,7 @@ import {
 } from "react-icons/fa";
 import { postStorage } from "../services/postStorage";
 import { schedulingApi } from "../services/scheduling/schedulingApi";
+import { mediaApi } from "../services/media/mediaApi";
 import type { PublisherPost, Platform as PostPlatform } from "../types/post";
 
 type MediaItem = {
@@ -491,6 +492,24 @@ const stateImportedRef = useRef(false);
         selectedPlatforms.includes(platform.id),
       );
 
+      // Upload any local files first
+      const finalMediaUrls: string[] = [];
+      for (const item of mediaItems) {
+        if (item.preview.startsWith("blob:")) {
+          showStatus(`Uploading ${item.file.name}...`, "info");
+          const uploaded = await mediaApi.uploadMedia(item.file);
+          if (uploaded && uploaded.url) {
+            finalMediaUrls.push(uploaded.url);
+          } else {
+            throw new Error(`Failed to upload ${item.file.name}`);
+          }
+        } else {
+          finalMediaUrls.push(item.preview);
+        }
+      }
+
+      showStatus("Publishing...", "info");
+
       // Trigger backend background publishing / scheduling service
       await schedulingApi.schedulePost({
         caption: caption.trim(),
@@ -498,31 +517,9 @@ const stateImportedRef = useRef(false);
         scheduleDate: showSchedule ? scheduleDate : undefined,
         scheduleTime: showSchedule ? scheduleTime : undefined,
         publishNow: !showSchedule,
+        mediaUrls: finalMediaUrls,
       });
 
-      const newPosts: PublisherPost[] = selectedPlatformDetails.map((platform) => {
-        const platformCaption = getCaptionForPlatform(platform.id);
-        const now = new Date();
-        const dateStr = now.toISOString().split("T")[0];
-        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        return {
-          id: `${Date.now()}-${platform.id}`,
-          title: platformCaption.trim().length > 45
-            ? `${platformCaption.trim().slice(0, 45)}...`
-            : platformCaption.trim(),
-          caption: platformCaption,
-          date: showSchedule ? scheduleDate : dateStr,
-          time: showSchedule ? scheduleTime : timeStr,
-          platform: platform.id as PostPlatform,
-          status: showSchedule ? "Scheduled" : "Publishing",
-          mediaType: mediaItems[0]?.type === "video" ? "Video" : "Image",
-          thumbnail: "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80",
-          createdAt: Date.now(),
-        };
-      });
-
-      postStorage.savePosts(newPosts);
       localStorage.removeItem(DRAFT_KEY);
 
       const message = showSchedule

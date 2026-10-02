@@ -18,7 +18,7 @@ import { FaFacebook, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import type { PublisherPost, Platform, PostStatus } from "../types/post";
 import { postStorage } from "../services/postStorage";
-import { schedulingApi } from "../services/scheduling/schedulingApi";
+import { postApi } from "../services/posts/postApi";
 
 const statusFilters = ["All", "Draft", "Scheduled", "Publishing", "Published", "Failed", "Cancelled"] as const;
 
@@ -100,37 +100,28 @@ function Content() {
   const [menuId, setMenuId] = useState<string | null>(null);
 
   useEffect(() => {
-    const localPosts = postStorage.getAllPosts();
+    // Only load local drafts from storage
+    const localPosts = postStorage.getAllPosts().filter(p => p.status === "Draft");
     setContent(localPosts);
 
-    schedulingApi
-      .getScheduledPosts()
+    postApi
+      .getPosts()
       .then((serverPosts) => {
         if (Array.isArray(serverPosts) && serverPosts.length > 0) {
-          const transformed: PublisherPost[] = serverPosts.flatMap((sp) =>
-            sp.platforms.map((plat) => ({
-              id: sp.id,
-              title: sp.title || sp.caption.slice(0, 45),
-              caption: sp.caption,
-              date: sp.date,
-              time: sp.time || "10:00 AM",
-              platform: plat as Platform,
-              status: sp.status as PostStatus,
-              thumbnail: sp.thumbnail,
-              mediaType: sp.mediaType || "Image",
-              createdAt: sp.createdAt,
-            }))
-          );
-          const merged = [...localPosts];
-          transformed.forEach((tp) => {
-            const idx = merged.findIndex((m) => m.id === tp.id && m.platform === tp.platform);
-            if (idx >= 0) {
-              merged[idx] = tp;
-            } else {
-              merged.push(tp);
-            }
-          });
-          setContent(merged);
+          const transformed: PublisherPost[] = serverPosts.map((sp: any) => ({
+            id: sp.id,
+            title: sp.title || sp.caption?.slice(0, 45) || "Social Post",
+            caption: sp.caption,
+            date: sp.date,
+            time: sp.time || "10:00 AM",
+            platform: (sp.platform || sp.platforms?.[0] || "Instagram") as Platform,
+            status: sp.status as PostStatus,
+            thumbnail: sp.thumbnail || "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80",
+            mediaType: sp.mediaType || "Image",
+            createdAt: sp.createdAt,
+          }));
+          
+          setContent([...localPosts, ...transformed]);
         }
       })
       .catch((err) => console.warn("Could not fetch remote posts:", err));
