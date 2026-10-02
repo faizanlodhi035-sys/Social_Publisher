@@ -224,13 +224,20 @@ export class AccountRepository {
       platformAccountId: data.platformAccountId,
       username: data.username,
       displayName: data.displayName,
-      avatarUrl: data.avatarUrl || existing?.avatarUrl,
+      avatarUrl: data.avatarUrl || existing?.avatarUrl || "",
       status: "connected",
       connectedAt: existing?.connectedAt || now,
       updatedAt: new Date().toISOString(),
       capabilities: data.capabilities || { publish: true, analytics: true },
       tokens,
     };
+
+    // Remove any strictly undefined values to prevent Firestore crashes
+    Object.keys(record).forEach((key) => {
+      if ((record as any)[key] === undefined) {
+        delete (record as any)[key];
+      }
+    });
 
     // Update memory fallback
     this.memoryStore.set(id, record);

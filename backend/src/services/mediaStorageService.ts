@@ -1,4 +1,5 @@
-import { getFirestoreDb, getStorageBucket, isFirebaseConfigured } from "../firebase/admin.js";
+import { getFirestoreDb, isFirebaseConfigured } from "../firebase/admin.js";
+import { v2 as cloudinary } from 'cloudinary';
 
 export interface MediaAssetRecord {
   id: string;
@@ -15,6 +16,14 @@ export interface MediaAssetRecord {
 
 export class MediaStorageService {
   private memoryMedia: Map<string, MediaAssetRecord> = new Map();
+
+  constructor() {
+    cloudinary.config({ 
+        cloud_name: 'jqqj9ymf', 
+        api_key: '581342982617336', 
+        api_secret: 'OEFwbIPIDRQW9shvBRZPNicNbuY'
+    });
+  }
 
   public async getAllMedia(workspaceId = "default-workspace"): Promise<MediaAssetRecord[]> {
     const db = getFirestoreDb();
@@ -90,21 +99,23 @@ export class MediaStorageService {
     const storagePath = `workspaces/${workspaceId}/media/${id}/${filename}`;
 
     let publicUrl = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80";
+    let actualStoragePath = storagePath;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bucket = getStorageBucket() as any;
-    if (bucket) {
-      try {
-        const file = bucket.file(storagePath);
-        await file.save(buffer, {
-          metadata: { contentType: mimeType },
-          public: true,
-        });
-
-        publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
-      } catch (err) {
-        console.warn("[MediaStorageService] Firebase Storage upload failed:", err);
-      }
+    try {
+      const uploadResult = await new Promise<any>((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          { folder: `workspaces/${workspaceId}`, public_id: id, resource_type: isVideo ? 'video' : 'image' },
+          (error, result) => {
+            if (result) resolve(result);
+            else reject(error);
+          }
+        );
+        uploadStream.end(buffer);
+      });
+      publicUrl = uploadResult.secure_url;
+      actualStoragePath = uploadResult.public_id;
+    } catch (err) {
+      console.warn("[MediaStorageService] Cloudinary upload failed:", err);
     }
 
     return this.saveMediaMetadata(
@@ -116,7 +127,7 @@ export class MediaStorageService {
         mimeType,
         size: buffer.length,
         url: publicUrl,
-        storagePath,
+        storagePath: actualStoragePath,
       },
       workspaceId
     );
@@ -162,13 +173,11 @@ export class MediaStorageService {
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bucket = getStorageBucket() as any;
-    if (bucket && record?.storagePath) {
+    if (record?.storagePath) {
       try {
-        await bucket.file(record.storagePath).delete();
+        await cloudinary.uploader.destroy(record.storagePath, { resource_type: record.type === 'video' ? 'video' : 'image' });
       } catch (err) {
-        console.warn("[MediaStorageService] Firebase Storage delete failed:", err);
+        console.warn("[MediaStorageService] Cloudinary delete failed:", err);
       }
     }
 
