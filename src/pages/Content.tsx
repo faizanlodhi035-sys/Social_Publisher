@@ -46,7 +46,23 @@ function PlatformIcon({ platform }: { platform: Platform }) {
   return <FaYoutube size={17} />;
 }
 
-function StatusBadge({ status }: { status: PostStatus }) {
+function StatusBadge({ status, createdAt }: { status: PostStatus; createdAt?: number }) {
+  const [elapsed, setElapsed] = useState("");
+
+  useEffect(() => {
+    if (status !== "Publishing" || !createdAt) return;
+
+    const updateTimer = () => {
+      const diff = Math.floor((Date.now() - createdAt) / 1000);
+      if (diff < 60) setElapsed(` (${diff}s)`);
+      else setElapsed(` (${Math.floor(diff / 60)}m ${diff % 60}s)`);
+    };
+    
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [status, createdAt]);
+
   const config = {
     Draft: {
       icon: FileText,
@@ -58,7 +74,7 @@ function StatusBadge({ status }: { status: PostStatus }) {
     },
     Publishing: {
       icon: Loader2,
-      className: "bg-blue-50 text-blue-700 animate-pulse",
+      className: "bg-blue-50 text-blue-700",
     },
     Published: {
       icon: CheckCircle2,
@@ -82,7 +98,7 @@ function StatusBadge({ status }: { status: PostStatus }) {
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${current.className}`}
     >
       <Icon size={13} className={status === "Publishing" ? "animate-spin" : ""} />
-      {status}
+      {status}{status === "Publishing" ? elapsed : ""}
     </span>
   );
 }
@@ -100,31 +116,38 @@ function Content() {
   const [menuId, setMenuId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Only load local drafts from storage
-    const localPosts = postStorage.getAllPosts().filter(p => p.status === "Draft");
-    setContent(localPosts);
+    const loadPosts = () => {
+      const localPosts = postStorage.getAllPosts().filter(p => p.status === "Draft");
+      
+      postApi
+        .getPosts()
+        .then((serverPosts) => {
+          if (Array.isArray(serverPosts)) {
+            const transformed: PublisherPost[] = serverPosts.map((sp: any) => ({
+              id: sp.id,
+              title: sp.title || sp.caption?.slice(0, 45) || "Social Post",
+              caption: sp.caption,
+              date: sp.date,
+              time: sp.time || "10:00 AM",
+              platform: (sp.platform || sp.platforms?.[0] || "Instagram") as Platform,
+              status: sp.status as PostStatus,
+              thumbnail: sp.thumbnail || "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80",
+              mediaType: sp.mediaType || "Image",
+              createdAt: sp.createdAt,
+            }));
+            
+            setContent([...localPosts, ...transformed]);
+          }
+        })
+        .catch((err) => console.warn("Could not fetch remote posts:", err));
+    };
 
-    postApi
-      .getPosts()
-      .then((serverPosts) => {
-        if (Array.isArray(serverPosts) && serverPosts.length > 0) {
-          const transformed: PublisherPost[] = serverPosts.map((sp: any) => ({
-            id: sp.id,
-            title: sp.title || sp.caption?.slice(0, 45) || "Social Post",
-            caption: sp.caption,
-            date: sp.date,
-            time: sp.time || "10:00 AM",
-            platform: (sp.platform || sp.platforms?.[0] || "Instagram") as Platform,
-            status: sp.status as PostStatus,
-            thumbnail: sp.thumbnail || "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80",
-            mediaType: sp.mediaType || "Image",
-            createdAt: sp.createdAt,
-          }));
-          
-          setContent([...localPosts, ...transformed]);
-        }
-      })
-      .catch((err) => console.warn("Could not fetch remote posts:", err));
+    // Load immediately
+    loadPosts();
+    
+    // Poll every 5 seconds to update statuses
+    const intervalId = setInterval(loadPosts, 5000);
+    return () => clearInterval(intervalId);
   }, []);
 
   const stats = useMemo(() => {
@@ -365,7 +388,7 @@ function Content() {
                       />
 
                       <div className="absolute left-3 top-3">
-                        <StatusBadge status={item.status} />
+                        <StatusBadge status={item.status} createdAt={item.createdAt} />
                       </div>
 
                       <div className="absolute right-3 top-3">
@@ -521,7 +544,7 @@ function Content() {
               />
 
               <div className="mt-5 flex items-center justify-between">
-                <StatusBadge status={selectedItem.status} />
+                <StatusBadge status={selectedItem.status} createdAt={selectedItem.createdAt} />
 
                 <div className="flex items-center gap-2 text-sm text-slate-500">
                   <PlatformIcon platform={selectedItem.platform} />
