@@ -85,14 +85,14 @@ export function createApp() {
   // External Social Webhooks (Protected by webhook signatures)
   app.use("/api", webhookRoutes);
 
+  // OAuth Initiation & Status (Moved to public so browser redirects work)
+  app.use("/api/auth", authRateLimiter, authRoutes);
+
   // ==============================================================================
   // Protected Endpoints (Strictly require Bearer Token & Workspace Access)
   // ==============================================================================
   const apiRouter = express.Router();
   apiRouter.use(requireAuth, requireWorkspaceAccess);
-
-  // OAuth Initiation & Status
-  apiRouter.use("/auth", authRateLimiter, authRoutes);
 
   // Workspace Social Accounts
   apiRouter.use(accountRoutes);
