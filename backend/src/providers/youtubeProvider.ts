@@ -187,6 +187,17 @@ export class YouTubeProvider implements ISocialProvider {
       throw new PublishFailedError("Valid access token missing for YouTube.");
     }
 
+    if (tokens.accessToken.startsWith("demo_")) {
+      // Mock successful publish for demo accounts
+      return {
+        success: true,
+        postId: `yt_demo_post_${Date.now()}`,
+        platform: "YouTube",
+        status: "published",
+        publishedAt: new Date().toISOString(),
+      };
+    }
+
     try {
       const mediaUrl = payload.mediaUrls?.[0];
       if (!mediaUrl) {

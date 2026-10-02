@@ -201,6 +201,17 @@ export class MetaProvider implements ISocialProvider {
       throw new PublishFailedError("Valid access token missing for Meta platform.");
     }
 
+    if (tokens.accessToken.startsWith("demo_")) {
+      // Mock successful publish for demo accounts
+      return {
+        success: true,
+        postId: `${this.platform.toLowerCase()}_demo_post_${Date.now()}`,
+        platform: this.platform,
+        status: "published",
+        publishedAt: new Date().toISOString(),
+      };
+    }
+
     try {
       if (this.platform === "Facebook") {
         // Post to Facebook Page feed
