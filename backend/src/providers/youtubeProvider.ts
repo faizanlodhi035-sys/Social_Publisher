@@ -188,6 +188,16 @@ export class YouTubeProvider implements ISocialProvider {
     }
 
     try {
+      const mediaUrl = payload.mediaUrls?.[0];
+      if (!mediaUrl) {
+        throw new Error("YouTube requires a video file to publish.");
+      }
+
+      // Fetch the video from the provided media URL
+      const mediaRes = await fetch(mediaUrl);
+      if (!mediaRes.ok) throw new Error("Failed to download media file for upload.");
+      const videoBuffer = await mediaRes.arrayBuffer();
+
       // YouTube Data API v3 upload request metadata
       const videoMetadata = {
         snippet: {
@@ -219,7 +229,29 @@ export class YouTubeProvider implements ISocialProvider {
         throw new Error(`YouTube video upload initialization failed: ${errorText}`);
       }
 
-      const videoId = initRes.headers.get("Location")?.split("id=")[1] || `yt_vid_${Date.now()}`;
+      const uploadUrl = initRes.headers.get("Location");
+      if (!uploadUrl) {
+        throw new Error("YouTube failed to return a resumable upload URL.");
+      }
+
+      // Upload actual video bytes
+      const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Length": videoBuffer.byteLength.toString(),
+          "Content-Type": "video/mp4",
+        },
+        body: videoBuffer,
+      });
+
+      if (!uploadRes.ok) {
+        const errorText = await uploadRes.text();
+        throw new Error(`YouTube video upload failed: ${errorText}`);
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const uploadData = (await uploadRes.json()) as any;
+      const videoId = uploadData.id || `yt_vid_${Date.now()}`;
 
       return {
         success: true,
