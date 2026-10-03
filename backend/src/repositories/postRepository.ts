@@ -77,20 +77,23 @@ export class PostRepository {
     const id = post.id || `post_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     const now = Date.now();
 
+    // Fetch existing post to avoid overwriting fields with defaults during an update
+    const existing = await this.getPostById(id, workspaceId);
+
     const record: PostRecord = {
       id,
       workspaceId,
-      authorId: post.authorId || "system_user",
-      title: post.title || (post.caption ? post.caption.slice(0, 45) : "Untitled Post"),
-      caption: post.caption || "",
-      platforms: post.platforms || ["Instagram"],
-      status: post.status || "Published",
-      date: post.date || new Date().toISOString().split("T")[0],
-      time: post.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      mediaType: post.mediaType || "Image",
-      mediaUrls: post.mediaUrls || [],
-      thumbnail: post.thumbnail || "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80",
-      createdAt: post.createdAt || now,
+      authorId: post.authorId || existing?.authorId || "system_user",
+      title: post.title !== undefined ? post.title : (existing?.title || (post.caption ? post.caption.slice(0, 45) : "Untitled Post")),
+      caption: post.caption !== undefined ? post.caption : (existing?.caption || ""),
+      platforms: post.platforms || existing?.platforms || ["Instagram"],
+      status: post.status || existing?.status || "Published",
+      date: post.date || existing?.date || new Date().toISOString().split("T")[0],
+      time: post.time || existing?.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      mediaType: post.mediaType || existing?.mediaType || "Image",
+      mediaUrls: post.mediaUrls || existing?.mediaUrls || [],
+      thumbnail: post.thumbnail || existing?.thumbnail || "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80",
+      createdAt: existing?.createdAt || post.createdAt || now,
       updatedAt: now,
     };
 
@@ -111,6 +114,10 @@ export class PostRepository {
     }
 
     return record;
+  }
+
+  public async updatePost(id: string, updates: Partial<PostRecord>, workspaceId = "default-workspace"): Promise<PostRecord> {
+    return this.createPost({ ...updates, id }, workspaceId);
   }
 
   public async deletePost(id: string, workspaceId = "default-workspace"): Promise<boolean> {
