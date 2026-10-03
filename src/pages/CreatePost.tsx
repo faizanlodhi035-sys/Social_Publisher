@@ -519,6 +519,14 @@ const stateImportedRef = useRef(false);
     return;
   }
 
+  if (selectedPlatforms.includes("YouTube") || selectedPlatforms.includes("youtube")) {
+    const hasVideo = mediaItems.some(item => item.type === "video");
+    if (!hasVideo) {
+      showStatus("YouTube requires a video file. Please upload a video.", "error");
+      return;
+    }
+  }
+
   setIsPublishing(true);
   setStatusMessage("");
 
