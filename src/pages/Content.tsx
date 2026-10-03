@@ -381,11 +381,26 @@ function Content() {
                   >
                     {/* Thumbnail */}
                     <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
-                      <img
-                        src={item.thumbnail}
-                        alt={item.title}
-                        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                      />
+                      {item.mediaUrls?.[0] && item.mediaUrls[0].match(/\\.(mp4|webm|mov|ogg)(\\?|$)/i) ? (
+                        <video
+                          src={item.mediaUrls[0]}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                          muted
+                          loop
+                          onMouseOver={(e) => (e.target as HTMLVideoElement).play().catch(() => {})}
+                          onMouseOut={(e) => {
+                            const target = e.target as HTMLVideoElement;
+                            target.pause();
+                            target.currentTime = 0;
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={item.mediaUrls?.[0] || item.thumbnail}
+                          alt={item.title}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                        />
+                      )}
 
                       <div className="absolute left-3 top-3">
                         <StatusBadge status={item.status} createdAt={item.createdAt} />

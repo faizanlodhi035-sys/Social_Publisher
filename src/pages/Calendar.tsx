@@ -209,6 +209,7 @@ export default function Calendar() {
               platform: plat as Platform,
               status: sp.status as PostStatus,
               thumbnail: sp.thumbnail,
+              mediaUrls: sp.mediaUrls,
               mediaType: sp.mediaType || "Image",
               createdAt: sp.createdAt,
             }))

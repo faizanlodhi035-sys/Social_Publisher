@@ -232,8 +232,10 @@ export default function Dashboard() {
                 >
                   {/* Thumbnail */}
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-slate-100 text-slate-400 border border-slate-200">
-                    {post.thumbnail ? (
-                      <img src={post.thumbnail} alt="Thumbnail" className="w-full h-full object-cover" />
+                    {post.mediaUrls?.[0] && post.mediaUrls[0].match(/\\.(mp4|webm|mov|ogg)(\\?|$)/i) ? (
+                        <video src={post.mediaUrls[0]} className="w-full h-full object-cover" muted />
+                    ) : post.mediaUrls?.[0] || post.thumbnail ? (
+                      <img src={post.mediaUrls?.[0] || post.thumbnail} alt="Thumbnail" className="w-full h-full object-cover" />
                     ) : (
                       <FileVideo size={22} />
                     )}
