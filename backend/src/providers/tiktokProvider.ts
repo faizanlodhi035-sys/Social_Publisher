@@ -105,13 +105,15 @@ export class TikTokProvider implements ISocialProvider {
       };
 
       try {
-        const userRes = await fetch("https://open.tiktokapis.com/v2/user/info/get/?fields=open_id,union_id,avatar_url,display_name", {
+        const userRes = await fetch("https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name", {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        
         const userData = (await userRes.json()) as any;
+        console.log("TikTok user info response:", userData);
+        
         if (userData.data?.user) {
           const u = userData.data.user;
           accountInfo = {
@@ -122,8 +124,11 @@ export class TikTokProvider implements ISocialProvider {
             avatarUrl: u.avatar_url,
             capabilities: { publish: true, analytics: true },
           };
+        } else if (userData.error) {
+          console.error("TikTok user info error:", userData.error);
         }
-      } catch {
+      } catch (err) {
+        console.error("TikTok user profile fetch failed:", err);
         // Fallback to basic account info if profile call fails
       }
 
