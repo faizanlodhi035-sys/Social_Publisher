@@ -10,6 +10,7 @@ import type { AuthenticatedRequest } from "../middleware/authMiddleware.js";
 
 export const schedulePost = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
+    console.log("SCHEDULE POST REQUEST BODY:", JSON.stringify(req.body, null, 2));
     const workspaceId = req.workspaceId || "default-workspace";
     const userId = req.userId || "system_user";
     const result = await schedulingService.schedulePost(req.body, userId, workspaceId);

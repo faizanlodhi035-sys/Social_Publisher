@@ -25,6 +25,7 @@ import {
 import { postStorage } from "../services/postStorage";
 import { schedulingApi } from "../services/scheduling/schedulingApi";
 import { mediaApi } from "../services/media/mediaApi";
+import { socialApi } from "../services/social/socialApi";
 import type { PublisherPost, Platform as PostPlatform } from "../types/post";
 
 type MediaItem = {
@@ -108,10 +109,9 @@ const MAX_MEDIA_SIZE = 100 * 1024 * 1024;
 export default function CreatePost() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(
-    platforms.filter((p) => p.connected).map((platform) => platform.id),
-  );
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [caption, setCaption] = useState("");
+
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
@@ -126,11 +126,35 @@ export default function CreatePost() {
   const [statusType, setStatusType] = useState<"success" | "error" | "info">(
     "info",
   );
- const [isSaving, setIsSaving] = useState(false);
-const [isPublishing, setIsPublishing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
-const isLoadingAccounts = false;
-const connectedAccounts = platforms.filter((platform) => platform.connected);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
+  const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    socialApi.getConnectedAccounts().then((accs) => {
+      if (mounted) {
+        const connectedIds = accs.filter(a => a.status === "connected").map(a => a.platform);
+        setConnectedPlatforms(connectedIds);
+        if (!selectedPlatforms.length) {
+            setSelectedPlatforms(connectedIds);
+        }
+        setIsLoadingAccounts(false);
+      }
+    }).catch(() => {
+      if (mounted) setIsLoadingAccounts(false);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  const dynamicPlatforms = platforms.map(p => ({
+    ...p,
+    connected: connectedPlatforms.includes(p.id)
+  }));
+  const connectedAccounts = dynamicPlatforms.filter((platform) => platform.connected);
+
 
 const location = useLocation();
 const stateImportedRef = useRef(false);
@@ -175,8 +199,9 @@ const stateImportedRef = useRef(false);
           setSelectedPlatforms(
             draft.selectedPlatforms?.length
               ? draft.selectedPlatforms
-              : platforms.filter((p) => p.connected).map((platform) => platform.id),
+              : [],
           );
+
           setPlatformCaptions(draft.platformCaptions ?? {});
           setScheduleDate(draft.scheduleDate ?? "");
           setScheduleTime(draft.scheduleTime ?? "");
@@ -329,8 +354,9 @@ const stateImportedRef = useRef(false);
   };
 
   const togglePlatform = (platformId: string) => {
-    const platform = platforms.find((p) => p.id === platformId);
+    const platform = dynamicPlatforms.find((p) => p.id === platformId);
     if (platform && !platform.connected) {
+
       showStatus(`Account not connected! Please connect ${platform.name} first in the Accounts page.`, "error");
       return;
     }
@@ -361,17 +387,19 @@ const stateImportedRef = useRef(false);
   const selectedCount = selectedPlatforms.length;
 
   const activePlatform =
-    platforms.find((platform) => platform.id === activePreview) ??
-    platforms.find((platform) => selectedPlatforms.includes(platform.id)) ??
-    platforms[0];
+    dynamicPlatforms.find((platform) => platform.id === activePreview) ??
+    dynamicPlatforms.find((platform) => selectedPlatforms.includes(platform.id)) ??
+    dynamicPlatforms[0];
+
 
   const activeCaption = getCaptionForPlatform(activePlatform.id);
   const activeCaptionLimit = activePlatform.captionLimit;
   const activeMedia = mediaItems[activeMediaIndex] ?? null;
 
   const hasOverLimitCaption = selectedPlatforms.some((platformId) => {
-    const platform = platforms.find((item) => item.id === platformId);
+    const platform = dynamicPlatforms.find((item) => item.id === platformId);
     if (!platform) return false;
+
 
     return getCaptionForPlatform(platformId).length > platform.captionLimit;
   });
@@ -412,11 +440,12 @@ const stateImportedRef = useRef(false);
       setIsSaving(false);
 
       try {
-        const selectedPlatformDetails = platforms.filter((platform) =>
+        const selectedPlatformDetails = dynamicPlatforms.filter((platform) =>
           selectedPlatforms.includes(platform.id),
         );
 
         const newDrafts: PublisherPost[] = selectedPlatformDetails.map((platform) => {
+
           const platformCaption = getCaptionForPlatform(platform.id);
           return {
             id: `draft-${Date.now()}-${platform.id}`,
@@ -449,8 +478,9 @@ const stateImportedRef = useRef(false);
     setMediaItems([]);
     setActiveMediaIndex(0);
     setCaption("");
-    setSelectedPlatforms(platforms.filter((p) => p.connected).map((platform) => platform.id));
+    setSelectedPlatforms(connectedPlatforms);
     setPlatformCaptions({});
+
     setScheduleDate("");
     setScheduleTime("");
     setShowSchedule(false);
