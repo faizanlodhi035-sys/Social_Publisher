@@ -114,6 +114,7 @@ function Content() {
   const [search, setSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<PublisherPost | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [isDeletingFailed, setIsDeletingFailed] = useState(false);
 
   useEffect(() => {
     const loadPosts = () => {
@@ -196,10 +197,22 @@ function Content() {
     setMenuId(null);
   };
 
-  const deleteItem = (id: string) => {
+  const deleteItem = async (id: string) => {
     postStorage.deletePost(id);
-    setContent(postStorage.getAllPosts());
+    await postApi.deletePost(id);
+    setContent((prev) => prev.filter((p) => p.id !== id));
     setMenuId(null);
+  };
+
+  const deleteFailedPosts = async () => {
+    setIsDeletingFailed(true);
+    const failedPosts = content.filter(p => p.status === "Failed");
+    for (const post of failedPosts) {
+      postStorage.deletePost(post.id);
+      await postApi.deletePost(post.id);
+    }
+    setContent(prev => prev.filter(p => p.status !== "Failed"));
+    setIsDeletingFailed(false);
   };
 
   return (
@@ -217,14 +230,27 @@ function Content() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate("/create-post")}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-          >
-            <Plus size={18} />
-            Create Post
-          </button>
+          <div className="flex items-center gap-3">
+            {content.some(p => p.status === "Failed") && (
+              <button
+                type="button"
+                onClick={deleteFailedPosts}
+                disabled={isDeletingFailed}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-100 disabled:opacity-50 border border-red-200"
+              >
+                {isDeletingFailed ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                Clear Failed
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate("/create-post")}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              <Plus size={18} />
+              Create Post
+            </button>
+          </div>
         </div>
 
         {/* Stats */}

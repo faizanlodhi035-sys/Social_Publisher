@@ -1,5 +1,6 @@
 import type { Response, NextFunction } from "express";
 import { postRepository } from "../repositories/postRepository.js";
+import { jobRepository } from "../jobs/jobRepository.js";
 import type { AuthenticatedRequest } from "../middleware/authMiddleware.js";
 import { AppError } from "../utils/errors.js";
 
@@ -58,7 +59,14 @@ export const deletePost = async (req: AuthenticatedRequest, res: Response, next:
     }
 
     await postRepository.deletePost(id, workspaceId);
-    res.json({ success: true, message: "Post deleted successfully." });
+
+    // Also delete any associated background publishing jobs so they don't recreate the post
+    const jobs = await jobRepository.getJobsByPostId(id, workspaceId);
+    for (const job of jobs) {
+      await jobRepository.deleteJob(job.id, workspaceId);
+    }
+
+    res.json({ success: true, message: "Post and associated jobs deleted successfully." });
   } catch (err) {
     next(err);
   }

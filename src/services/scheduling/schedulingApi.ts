@@ -10,6 +10,7 @@ export interface SchedulePostPayload {
   scheduleDate?: string;
   scheduleTime?: string;
   mediaUrls?: string[];
+  thumbnailUrl?: string;
   publishNow?: boolean;
   accountIds?: Record<string, string>;
 }

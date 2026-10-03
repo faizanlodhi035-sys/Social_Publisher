@@ -204,9 +204,10 @@ export class YouTubeProvider implements ISocialProvider {
         throw new Error("YouTube requires a video file to publish.");
       }
 
-      // Fetch the video from the provided media URL
       const mediaRes = await fetch(mediaUrl);
-      if (!mediaRes.ok) throw new Error("Failed to download media file for upload.");
+      if (!mediaRes.ok) {
+        throw new Error(`Failed to download media file for upload. Status: ${mediaRes.status} from URL: ${mediaUrl}`);
+      }
       const videoBuffer = await mediaRes.arrayBuffer();
 
       // YouTube Data API v3 upload request metadata
@@ -263,6 +264,29 @@ export class YouTubeProvider implements ISocialProvider {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const uploadData = (await uploadRes.json()) as any;
       const videoId = uploadData.id || `yt_vid_${Date.now()}`;
+
+      if (payload.thumbnailUrl && uploadData.id) {
+        try {
+          const thumbRes = await fetch(payload.thumbnailUrl);
+          if (thumbRes.ok) {
+            const thumbBuffer = await thumbRes.arrayBuffer();
+            const thumbUploadUrl = `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${uploadData.id}`;
+            const tRes = await fetch(thumbUploadUrl, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${tokens.accessToken}`,
+                "Content-Type": thumbRes.headers.get("content-type") || "image/jpeg",
+              },
+              body: thumbBuffer,
+            });
+            if (!tRes.ok) {
+              console.warn("YouTube thumbnail upload failed:", await tRes.text());
+            }
+          }
+        } catch (thumbErr) {
+          console.error("Failed to upload thumbnail to YouTube:", thumbErr);
+        }
+      }
 
       return {
         success: true,

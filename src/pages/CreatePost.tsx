@@ -108,7 +108,9 @@ const MAX_MEDIA_SIZE = 100 * 1024 * 1024;
 
 export default function CreatePost() {
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [caption, setCaption] = useState("");
 
@@ -314,8 +316,26 @@ const stateImportedRef = useRef(false);
     if (event.target.files) {
       addMediaFiles(event.target.files);
     }
-
     event.target.value = "";
+  };
+
+  const handleThumbnailInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      const file = event.target.files[0];
+      if (file.type.startsWith("image/")) {
+        setThumbnailFile(file);
+        setThumbnailPreview(URL.createObjectURL(file));
+      } else {
+        showStatus("Thumbnail must be an image file.", "error");
+      }
+    }
+    event.target.value = "";
+  };
+
+  const removeThumbnail = () => {
+    if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
   };
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
@@ -475,6 +495,9 @@ const stateImportedRef = useRef(false);
 
   const resetComposer = () => {
     mediaItems.forEach((item) => URL.revokeObjectURL(item.preview));
+    if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+    setThumbnailFile(null);
+    setThumbnailPreview(null);
     setMediaItems([]);
     setActiveMediaIndex(0);
     setCaption("");
@@ -553,6 +576,15 @@ const stateImportedRef = useRef(false);
         }
       }
 
+      let finalThumbnailUrl: string | undefined;
+      if (thumbnailFile) {
+        showStatus("Uploading thumbnail...", "info");
+        const uploadedThumb = await mediaApi.uploadMedia(thumbnailFile);
+        if (uploadedThumb && uploadedThumb.url) {
+          finalThumbnailUrl = uploadedThumb.url;
+        }
+      }
+
       showStatus("Publishing...", "info");
 
       // Trigger backend background publishing / scheduling service
@@ -563,6 +595,7 @@ const stateImportedRef = useRef(false);
         scheduleTime: showSchedule ? scheduleTime : undefined,
         publishNow: !showSchedule,
         mediaUrls: finalMediaUrls,
+        thumbnailUrl: finalThumbnailUrl,
       });
 
       localStorage.removeItem(DRAFT_KEY);
@@ -875,6 +908,40 @@ const stateImportedRef = useRef(false);
               </div>
             )}
           </section>
+
+          {/* Thumbnail Section */}
+          {(selectedPlatforms.includes("YouTube") || selectedPlatforms.includes("youtube")) && mediaItems.some(i => i.type === "video") && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="font-semibold text-slate-900">Custom Thumbnail</h2>
+                  <p className="mt-1 text-xs text-slate-500">Upload a custom thumbnail for your YouTube video.</p>
+                </div>
+                {thumbnailFile && (
+                  <button type="button" onClick={removeThumbnail} className="flex items-center gap-1.5 text-xs font-medium text-red-500 hover:text-red-600">
+                    <Trash2 size={14} /> Remove
+                  </button>
+                )}
+              </div>
+              
+              <input ref={thumbnailInputRef} type="file" accept="image/*" className="hidden" onChange={handleThumbnailInput} />
+              
+              {!thumbnailFile ? (
+                <div onClick={() => thumbnailInputRef.current?.click()} className="mt-4 cursor-pointer rounded-xl border-2 border-dashed p-6 text-center hover:bg-slate-50 border-slate-200 hover:border-blue-300 transition">
+                  <Upload size={18} className="mx-auto mb-2 text-slate-400" />
+                  <p className="text-sm text-slate-600 font-medium">Click to upload thumbnail</p>
+                </div>
+              ) : (
+                <div className="mt-4 flex items-center gap-4 rounded-xl border border-slate-200 p-3">
+                  {thumbnailPreview && <img src={thumbnailPreview} className="h-16 w-24 object-cover rounded-lg border border-slate-200" alt="Thumbnail" />}
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-800">{thumbnailFile.name}</p>
+                    <p className="text-xs text-slate-400">{(thumbnailFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Caption */}
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

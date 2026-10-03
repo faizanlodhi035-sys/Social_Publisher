@@ -49,6 +49,7 @@ export class SchedulingService {
           date: dateStr,
           time: timeStr,
           mediaUrls: request.mediaUrls || [],
+          thumbnail: request.thumbnailUrl,
         },
         workspaceId
       );
@@ -70,6 +71,7 @@ export class SchedulingService {
             platform,
             caption: request.caption,
             mediaUrls: request.mediaUrls || [],
+            thumbnailUrl: request.thumbnailUrl,
             status: isImmediate ? "queued" : "scheduled",
             scheduledAt: new Date(scheduledTimestampMs).toISOString(),
             idempotencyKey,

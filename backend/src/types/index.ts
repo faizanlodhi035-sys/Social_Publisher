@@ -34,6 +34,7 @@ export interface PublishRequestPayload {
   accountId: string;
   caption: string;
   mediaUrls?: string[];
+  thumbnailUrl?: string;
   scheduledAt?: string;
 }
 

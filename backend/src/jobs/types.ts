@@ -28,6 +28,7 @@ export interface PublishingJob {
   platform: SocialPlatform;
   caption: string;
   mediaUrls: string[];
+  thumbnailUrl?: string;
   status: JobStatus;
   scheduledAt: string; // ISO date string
   attempts: number;
@@ -52,6 +53,7 @@ export interface SchedulePostRequest {
   platforms: SocialPlatform[];
   accountIds?: Record<string, string>; // platform -> accountId
   mediaUrls?: string[];
+  thumbnailUrl?: string;
   scheduleDate?: string; // YYYY-MM-DD
   scheduleTime?: string; // HH:MM
   publishNow?: boolean;

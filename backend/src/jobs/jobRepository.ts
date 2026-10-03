@@ -213,6 +213,17 @@ export class JobRepository {
 
     return this.getJobById(jobId, workspaceId);
   }
+  public async deleteJob(jobId: string, workspaceId = "default-workspace"): Promise<void> {
+    this.memoryJobs.delete(jobId);
+    const db = getFirestoreDb();
+    if (db && isFirebaseConfigured()) {
+      try {
+        await db.collection("workspaces").doc(workspaceId).collection("publishingJobs").doc(jobId).delete();
+      } catch (err) {
+        console.warn("[JobRepository] Firestore deleteJob failed:", err);
+      }
+    }
+  }
 }
 
 export const jobRepository = new JobRepository();

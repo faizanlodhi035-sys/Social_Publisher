@@ -2,7 +2,7 @@ async function test() {
   const payload = {
     caption: "Test caption from script",
     platforms: ["YouTube"],
-    mediaUrls: ["https://example.com/video.mp4"]
+    mediaUrls: ["https://www.w3schools.com/html/mov_bbb.mp4"]
   };
 
   const response = await fetch("https://social-publisher-dvec.onrender.com/api/posts/schedule", {
