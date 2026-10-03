@@ -1,5 +1,6 @@
 import { getFirestoreDb, isFirebaseConfigured } from "../firebase/admin.js";
 import { v2 as cloudinary } from 'cloudinary';
+import { AppError } from '../utils/errors.js';
 
 export interface MediaAssetRecord {
   id: string;
@@ -116,7 +117,7 @@ export class MediaStorageService {
       actualStoragePath = uploadResult.public_id;
     } catch (err: any) {
       console.warn("[MediaStorageService] Cloudinary upload failed:", err);
-      throw new Error(`Cloudinary upload failed: ${err.message || 'Unknown error'}`);
+      throw new AppError(`Cloudinary error: ${err.message || 'Unknown error'}`, 500, "CLOUDINARY_UPLOAD_FAILED");
     }
 
     return this.saveMediaMetadata(

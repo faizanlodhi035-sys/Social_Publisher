@@ -33,7 +33,15 @@ export const mediaApi = {
         body: formData,
       });
 
-      if (!res.ok) throw new Error(`Upload failed ${res.status}`);
+      if (!res.ok) {
+        let errorMsg = `Upload failed ${res.status}`;
+        try {
+           const errData = await res.json();
+           if (errData && errData.error) errorMsg = errData.error;
+           if (errData && errData.message) errorMsg = errData.message;
+        } catch(e) {}
+        throw new Error(errorMsg);
+      }
       const json = await res.json();
       const item = json.data;
 
@@ -45,9 +53,9 @@ export const mediaApi = {
         size: item.size || file.size,
         createdAt: new Date().toISOString(),
       };
-    } catch (err) {
+    } catch (err: any) {
       console.error("mediaApi.uploadMedia error:", err);
-      return null;
+      throw err;
     }
   },
 
