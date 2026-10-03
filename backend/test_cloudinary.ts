@@ -1,0 +1,1 @@
+import { v2 as cloudinary } from 'cloudinary'; cloudinary.config({ cloud_name: 'jqqj9ymf', api_key: '581342982617336', api_secret: 'OEFwbIPIDRQW9shvBRZPNicNbuY' }); cloudinary.api.ping().then(res => console.log('Cloudinary Ping:', res)).catch(err => console.error('Cloudinary Error:', err));

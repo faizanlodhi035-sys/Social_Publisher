@@ -22,7 +22,7 @@ export class MediaStorageService {
     cloudinary.config({ 
         cloud_name: 'jqqj9ymf', 
         api_key: '581342982617336', 
-        api_secret: 'OEFwbIPIDRQW9shvBRZPNicNbuY'
+        api_secret: '0EFWbIPIDRQW9shvBRZPNicNbuY'
     });
   }
 
