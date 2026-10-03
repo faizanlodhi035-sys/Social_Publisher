@@ -387,7 +387,7 @@ const stateImportedRef = useRef(false);
   const selectedCount = selectedPlatforms.length;
 
   const activePlatform =
-    dynamicPlatforms.find((platform) => platform.id === activePreview) ??
+    dynamicPlatforms.find((platform) => platform.id === activePreview && selectedPlatforms.includes(platform.id)) ??
     dynamicPlatforms.find((platform) => selectedPlatforms.includes(platform.id)) ??
     dynamicPlatforms[0];
 

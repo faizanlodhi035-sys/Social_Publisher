@@ -32,25 +32,28 @@ export class SchedulingService {
 
     const initialPostStatus = isImmediate ? "Publishing" : "Scheduled";
 
-    // 1. Create or Update Post Record in Firestore
-    const post = await postRepository.createPost(
-      {
-        id: request.postId,
-        authorId: userId,
-        caption: request.caption,
-        platforms: request.platforms,
-        status: initialPostStatus,
-        date: dateStr,
-        time: timeStr,
-        mediaUrls: request.mediaUrls || [],
-      },
-      workspaceId
-    );
-
     const createdJobs: PublishingJob[] = [];
+    const createdPosts: PostRecord[] = [];
 
-    // 2. Create independent publishing jobs per platform
+    // 2. Create independent publishing jobs and posts per platform
     for (const platform of request.platforms) {
+      const platformPostId = request.platforms.length > 1 ? `${request.postId}-${platform.toLowerCase()}` : request.postId;
+      
+      const post = await postRepository.createPost(
+        {
+          id: platformPostId,
+          authorId: userId,
+          caption: request.caption,
+          platforms: [platform],
+          status: initialPostStatus,
+          date: dateStr,
+          time: timeStr,
+          mediaUrls: request.mediaUrls || [],
+        },
+        workspaceId
+      );
+      createdPosts.push(post);
+
       const accountId = request.accountIds?.[platform] || `${platform.toLowerCase()}-default`;
       const idempotencyKey = `${workspaceId}_${post.id}_${platform.toLowerCase()}`;
 
@@ -98,7 +101,7 @@ export class SchedulingService {
       });
     }
 
-    return { post, jobs: createdJobs };
+    return { post: createdPosts[0], jobs: createdJobs };
   }
 
   /**
