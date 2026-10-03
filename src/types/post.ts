@@ -12,6 +12,7 @@ export interface PublisherPost {
   time?: string;
   mediaType?: "Image" | "Video";
   thumbnail?: string; // Fallback image URL for demo purposes
+  mediaUrls?: string[];
   platformCaptions?: Record<string, string>;
   createdAt: number;
 }

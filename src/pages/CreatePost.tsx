@@ -539,7 +539,12 @@ const stateImportedRef = useRef(false);
           showStatus(`Uploading ${item.file.name}...`, "info");
           const uploaded = await mediaApi.uploadMedia(item.file);
           if (uploaded && uploaded.url) {
-            finalMediaUrls.push(uploaded.url);
+            let finalUrl = uploaded.url;
+            if (item.type === "video" && !finalUrl.match(/\.(mp4|webm|mov)(\?|$)/i)) {
+              // Force Cloudinary to serve MP4 to ensure YouTube accepts the video format
+              finalUrl = finalUrl.split("?")[0] + ".mp4" + (finalUrl.includes("?") ? "?" + finalUrl.split("?")[1] : "");
+            }
+            finalMediaUrls.push(finalUrl);
           } else {
             throw new Error(`Failed to upload ${item.file.name}`);
           }

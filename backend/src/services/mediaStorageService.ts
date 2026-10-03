@@ -114,8 +114,9 @@ export class MediaStorageService {
       });
       publicUrl = uploadResult.secure_url;
       actualStoragePath = uploadResult.public_id;
-    } catch (err) {
+    } catch (err: any) {
       console.warn("[MediaStorageService] Cloudinary upload failed:", err);
+      throw new Error(`Cloudinary upload failed: ${err.message || 'Unknown error'}`);
     }
 
     return this.saveMediaMetadata(

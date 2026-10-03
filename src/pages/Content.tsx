@@ -133,6 +133,7 @@ function Content() {
               status: sp.status as PostStatus,
               thumbnail: sp.thumbnail || "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=900&q=80",
               mediaType: sp.mediaType || "Image",
+              mediaUrls: sp.mediaUrls || [],
               createdAt: sp.createdAt,
             }));
             
@@ -381,7 +382,7 @@ function Content() {
                   >
                     {/* Thumbnail */}
                     <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
-                      {item.mediaUrls?.[0] && item.mediaUrls[0].match(/\\.(mp4|webm|mov|ogg)(\\?|$)/i) ? (
+                      {item.mediaUrls?.[0] && (item.mediaUrls[0].match(/\.(mp4|webm|mov|ogg)(\?|$)/i) || item.mediaUrls[0].includes('/video/upload/')) ? (
                         <video
                           src={item.mediaUrls[0]}
                           className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
@@ -414,6 +415,11 @@ function Content() {
 
                       <div className="absolute bottom-3 left-3 rounded-md bg-black/60 px-2 py-1 text-[11px] font-medium text-white backdrop-blur">
                         {item.mediaType}
+                      </div>
+
+                      {/* DEBUG INFO */}
+                      <div className="absolute top-8 left-0 bg-red-600 text-white text-[10px] p-1 z-50 max-w-full break-all">
+                        URLs: {JSON.stringify(item.mediaUrls)}
                       </div>
                     </div>
 

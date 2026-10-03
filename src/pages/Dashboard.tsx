@@ -232,13 +232,17 @@ export default function Dashboard() {
                 >
                   {/* Thumbnail */}
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-slate-100 text-slate-400 border border-slate-200">
-                    {post.mediaUrls?.[0] && post.mediaUrls[0].match(/\\.(mp4|webm|mov|ogg)(\\?|$)/i) ? (
+                    {post.mediaUrls?.[0] && (post.mediaUrls[0].match(/\.(mp4|webm|mov|ogg)(\?|$)/i) || post.mediaUrls[0].includes('/video/upload/')) ? (
                         <video src={post.mediaUrls[0]} className="w-full h-full object-cover" muted />
                     ) : post.mediaUrls?.[0] || post.thumbnail ? (
                       <img src={post.mediaUrls?.[0] || post.thumbnail} alt="Thumbnail" className="w-full h-full object-cover" />
                     ) : (
                       <FileVideo size={22} />
                     )}
+                  </div>
+                  {/* DEBUG INFO */}
+                  <div className="absolute top-0 right-0 bg-black text-white text-[10px] p-1 z-50">
+                    Type: {post.mediaType}, URLs: {JSON.stringify(post.mediaUrls)}
                   </div>
 
                   {/* Content */}
