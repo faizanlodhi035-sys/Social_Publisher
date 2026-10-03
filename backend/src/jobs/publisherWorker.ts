@@ -56,7 +56,7 @@ export async function processPublishingJob(
       accountId: account.id,
       caption: job.caption || post.caption,
       mediaUrls: job.mediaUrls.length > 0 ? job.mediaUrls : post.mediaUrls,
-    });
+    }, workspaceId);
 
     if (!result.success) {
       throw new Error(result.error || `Publishing to ${job.platform} failed.`);
